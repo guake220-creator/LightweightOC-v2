@@ -1,24 +1,67 @@
-[org 0x7c00]          ; Начальный адрес загрузки BIOS
+[org 0x7c00]
 
-; 1. Переходим в текстовый режим 80x25 и очищаем экран
-mov ah, 0x00
-mov al, 0x03          
-int 0x10
-
-; 2. Выводим текст "catOS loading..."
-mov si, greeting_msg
-call print_string
-
-animation_loop:
-    ; 3. Выводим анимированный символ для спирали/эффекта
-    mov ah, 0x09
-    mov al, '*'       
-    mov bh, 0x00
-    mov bl, 0x0A      ; Зеленый цвет текста
-    mov cx, 1         
+    mov ah, 0x00
+    mov al, 0x03          ; Текстовый режим
     int 0x10
 
-    jmp animation_loop
+    ; 1. Показываем анимацию спирали
+    mov si, spiral
+    call print_string
+    mov cx, 0xFFFF
+delay1: loop delay1       ; Задержка
+
+    ; 2. Очищаем экран для кошки
+    mov ah, 0x00
+    mov al, 0x03
+    int 0x10
+
+    ; 3. Рисуем кошку и название
+    mov si, cat_art
+    call print_string
+    mov si, os_name
+    call print_string
+
+    ; 4. Переходим к вводу текста (терминалу)
+start_shell:
+    mov si, prompt_msg
+    call print_string
+
+input_loop:
+    ; Ожидание нажатия клавиши от пользователя
+    mov ah, 0x00
+    int 0x16              ; Прерывание клавиатуры BIOS
+    
+    ; Проверка на клавишу Enter (код 0x0D)
+    cmp al, 0x0D
+    je .enter_pressed
+
+    ; Проверка на Backspace / стирание (код 0x08)
+    cmp al, 0x08
+    je .backspace
+
+    ; Иначе — выводим набранный символ на экран
+    mov ah, 0x0E
+    int 0x10
+    jmp input_loop
+
+.enter_pressed:
+    ; Перевод строки при нажатии Enter
+    mov ah, 0x0E
+    mov al, 0x0D
+    int 0x10
+    mov al, 0x0A
+    int 0x10
+    jmp start_shell       ; Снова выводим приглашение catOS>
+
+.backspace:
+    ; Логика стирания символа (в текстовом режиме)
+    mov ah, 0x0E
+    int 0x10
+    mov al, ' '
+    int 0x10
+    mov al, 0x08
+    int 0x10
+    jmp input_loop
 
 print_string:
     lodsb
@@ -30,8 +73,10 @@ print_string:
 .done:
     ret
 
-greeting_msg db 'catOS loading...', 13, 10, 0
+spiral  db ' @ @ @ @ @ ', 13, 10, '  @ @ @ @  ', 13, 10, '   @ @ @   ', 13, 10, 0
+cat_art db ' /\_/\ ', 13, 10, '( o.o )', 13, 10, ' > ^ < ', 13, 10, 0
+os_name db 13, 10, 'catOS v1.0', 13, 10, 13, 10, 0
+prompt_msg db 'catOS> ', 0
 
-; Заполняем до 512 байт и добавляем стандартную подпись загрузчика
 times 510-($-$$) db 0
 dw 0xaa55

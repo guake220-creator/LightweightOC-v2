@@ -14,11 +14,13 @@
 
     ; 3. Рисуем элемент интерфейса
     mov di, 320 * 80 + 140
-    mov cx, 40
+    mov cx, 40              ; Счетчик цикла
+    xor bx, bx              ; Смещение bx = 0
 .golova:
-    mov byte [es:di+cx], 15 ; Белый цвет
-    add di, 320
-    loop .golova
+    mov byte [es:di+bx], 15 ; Белый цвет ([di+bx] разрешено в 16-бит)
+    inc bx                  ; Увеличиваем смещение
+    dec cx                  ; Уменьшаем счетчик
+    jnz .golova
 
     ; 4. Вывод текста
     mov si, message
